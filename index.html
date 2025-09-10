@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>FastAPI demo client</title>
+</head>
+<body>
+ <style>
+    *{
+        font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+    }
+    li{
+        padding: 3px 10px;
+        border: solid 1px gray ;
+        border-radius: 5px;
+        color: #000;
+        background-color: aliceblue;
+        margin: 5px auto;
+        list-style: none;
+    }
+    button{
+        cursor: pointer ;
+        border: solid 1px gray ;
+         border-left: solid 3px transparent;
+        border-bottom: solid 3px transparent;
+    }
+    button:active{
+         border-left: solid 3px gray;
+        border-bottom: solid 3px gray;
+    }
+ </style>
+  <h1>Users</h1>
+
+  <!-- Create user form -->
+  <form id="createUserForm">
+    <input id="name" name="name" placeholder="name" required />
+    <input id="email" name="email" placeholder="email" type="email" required />
+    <button type="submit">Create</button>
+  </form>
+
+  <hr />
+
+  <!-- Button to reload users -->
+  <button id="reloadBtn">Load users</button>
+
+  <!-- Users list -->
+  <ul id="usersList"></ul>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:8000"; // change if needed
+
+    async function fetchUsers() {
+      try {
+        const res = await fetch(API_BASE + "/users/");
+        console.log(res)
+        if (!res.ok) throw new Error("Network response was not ok");
+        const users = await res.json();
+        // console.table(users)
+        renderUsers(users);
+      } catch (err) {
+        console.error("Failed to fetch users:", err);
+        alert("Error fetching users: " + err.message);
+      }
+    }
+
+    function renderUsers(users) {
+      const list = document.getElementById("usersList");
+      list.innerHTML = "";
+      if (!Array.isArray(users) || users.length === 0) {
+        list.innerHTML = "<li>No users</li>";
+        return;
+      }
+      users.forEach(u => {
+        // u might already be plain JSON (id, name, email). If it's a class instance converted to dict it's same.
+        const li = document.createElement("li");
+        li.textContent = `${u.id ?? ""} — ${u.name ?? ""} (${u.email ?? ""})`;
+        list.appendChild(li);
+      });
+    }
+
+    document.getElementById("reloadBtn").addEventListener("click", (e) => {
+      e.preventDefault();
+      fetchUsers();
+    });
+
+    document.getElementById("createUserForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      if (!name || !email) return alert("Fill name and email");
+
+      try {
+        const res = await fetch(API_BASE + "/users/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email })
+        });
+        console.log("POST RES: " , res)
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`Server returned ${res.status}: ${txt}`);
+        }
+        const created = await res.json();
+        // clear form
+        document.getElementById("name").value = "";
+        document.getElementById("email").value = "";
+        // append new user to the list (or reload)
+        fetchUsers();
+      } catch (err) {
+        console.error("Failed to create user:", err);
+        alert("Error creating user: " + err.message);
+      }
+    });
+
+    // Load users automatically on open
+    fetchUsers();
+  </script>
+</body>
+</html>
